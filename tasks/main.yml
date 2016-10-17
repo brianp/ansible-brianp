@@ -1,0 +1,62 @@
+---
+- apt_repository: repo="deb http://toolbelt.heroku.com/ubuntu ./" state=present
+  become: true
+
+- name: update apt-get
+  apt: update_cache=yes
+  become: true
+
+- name: install required apt-get packages
+  apt: name={{ item }} state=present force=yes
+  become: true
+  with_items:
+    - tmux
+    - silversearcher-ag
+    - curl
+    - wget
+    - git
+    - heroku-toolbelt
+
+- git_config: name=user.email value="brian.o.pearce@gmail.com" scope=global
+
+- git_config: name=user.name value="Brian Pearce" scope=global
+
+- git: repo=https://github.com/brianp/wellington.git
+   dest=/home/{{ ansible_ssh_user }}/.vim/
+   recursive=true
+   accept_hostkey=true
+
+- file: src=/home/{{ ansible_ssh_user }}/.vim/vimrc dest=/home/{{ ansible_ssh_user }}/.vimrc state=link
+
+- file: path=/home/{{ ansible_ssh_user }}/.config/ state=directory
+
+- file: src=/home/{{ ansible_ssh_user }}/.vim dest=/home/{{ ansible_ssh_user }}/.config/nvim state=link
+
+- git: repo=https://github.com/brianp/dotfiles.git
+    dest=/home/{{ ansible_ssh_user }}/.dotfiles/
+   accept_hostkey=true
+
+- shell: ./install.sh
+  args:
+    executable: /bin/bash
+    chdir: /home/{{ ansible_ssh_user }}/.dotfiles/
+    creates: /home/{{ ansible_ssh_user }}/.tmux.conf
+
+- file: src=/home/{{ ansible_ssh_user }}/.vimrc dest=/home/{{ ansible_ssh_user }}/.config/nvim/init.vim state=link
+
+- name: download ripgrep
+  get_url:
+    url: https://github.com/BurntSushi/ripgrep/releases/download/0.2.3/ripgrep-0.2.3-x86_64-unknown-linux-musl.tar.gz
+    dest: /home/{{ ansible_ssh_user }}/ripgrep-0.2.3-x86_64-unknown-linux-musl.tar.gz
+
+- name: untar ripgrep
+  command: tar -zxvf ripgrep-0.2.3-x86_64-unknown-linux-musl.tar.gz
+  args:
+    chdir: /home/{{ ansible_ssh_user }}/
+    creates: /home/{{ ansible_ssh_user }}/ripgrep-0.2.3-x86_64-unknown-linux-musl/
+
+- copy: src=/home/{{ ansible_ssh_user }}/ripgrep-0.2.3-x86_64-unknown-linux-musl/rg dest=/usr/local/bin/rg remote_src=true
+  become: true
+
+- file: path=/usr/local/bin/rg state=touch mode="a+x"
+  become: true
